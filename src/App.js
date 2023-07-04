@@ -1,17 +1,17 @@
 import { useState, useEffect, memo, useRef } from 'react';
-import Sidebar from './Sidebar';
-import Chat from './Chat';
-import Login from './Login';
+// import Chat from './Chat';
+// import Login from './Login';
 import setOnlineStatus from "./setOnlineStatus";
-import { Route, useLocation, Redirect } from 'react-router-dom';
+// import { Route, useLocation, Redirect } from 'react-router-dom';
 import { useStateValue } from './StateProvider';
-import CircularProgress from '@material-ui/core/CircularProgress';
+// import CircularProgress from '@material-ui/core/CircularProgress';
 import db, { auth, provider, createTimestamp, messaging } from './firebase';
-import { TransitionGroup, Transition, CSSTransition } from "react-transition-group";
-import './App.css';
+// import { TransitionGroup, Transition, CSSTransition } from "react-transition-group";
+// import './App.css';
 import useRoomsData from './useRoomsData';
-import scalePage from "./scalePage";
+// import scalePage from "./scalePage";
 import useFetchData from "./useFetchData.js";
+import Cookies from 'js-cookie';
 
 const configureNotif = (docID) => {
   messaging.requestPermission()
@@ -34,17 +34,19 @@ const configureNotif = (docID) => {
 }
 
 function App() {
-  const [{ user, path, pathID, roomsData, page }, dispatch, actionTypes] = useStateValue();
+  const [user, setUser] = useState(null);
+  const [{ path, pathID, roomsData, page }, dispatch, actionTypes] = useStateValue();
   const [loader, setLoader] = useState(true);
-  const [pwaEvent, setPwaEvent] = useState(undefined);
+  // const [pwaEvent, setPwaEvent] = useState(undefined);
   const [updating, setUpdating] = useState(false);
   const [checkingVersion, setCheckingVerison] = useState(true);
   const [chats, setChats] = useState(null);
   const [chatsFetched, setChatsFetched] = useState();
-  const location = useLocation();
+  const [unreadMessages, setUnreadMessages] = useState(0);
+  // const location = useLocation();
   const [setRoomsData] = useRoomsData();
-  const b = useRef([]);
-  const menus = ["/rooms", "/search", "/users", "/chats"];
+  // const b = useRef([]);
+  // const menus = ["/rooms", "/search", "/users", "/chats"];
 
   const [rooms, fetchRooms] = useFetchData(30, db.collection("rooms").orderBy("timestamp", "desc"), true, snap => {
     return snap.docs.map(doc => ({
@@ -72,111 +74,170 @@ function App() {
   }, "users");
 
   useEffect(() => {
-    auth.onAuthStateChanged(authUser => {
-      //console.log("user change: ", authUser)
-      if (authUser) {
-        dispatch({ type: actionTypes.SET_USER, user: authUser });
-        setLoader(false)
-        if ("serviceWorker" in navigator && "PushManager" in window) {
-          //console.log("This browser supports notifications and service workers")
-          configureNotif(authUser.uid);
-        }
-        //console.log(authUser);
-        db.collection("version").doc("version").get().then(doc => {
-          const version = doc.data().version;
-          const previousVersion = localStorage.getItem("version");
-          if (previousVersion) {
-            //console.log("previous version exists in local storage")
-            if (version !== +previousVersion) {
-              //console.log("new version is not equal to previous version")
-              localStorage.setItem("version", version);
-              setUpdating(true);
-              auth.signOut();
-              // auth.signInWithRedirect(provider).catch(e => alert(e.message))
-            } else {
-              setCheckingVerison(false)
-            }
-          } else {
-            //console.log("previous version doesn't exists in local storage")
-            localStorage.setItem("version", version);
-            setCheckingVerison(false)
-          }
+    //auth.signInWithRedirect(provider).catch(e => alert(e.message))
+    const email = "rdsambo@gmail.zk";
+    // const email = Cookies.get("userEmail");
+    // const username = Cookies.get("userName");
+//    console.log("email");
+//    console.log(email);
+    const pass = email;
+    const username = email;
+    if(user == null) {
+      // const fromcookie = Cookies.get("User");
+      // console.log("fromcookie");
+      // console.log(fromcookie);
+      // let userC =  null;
+      // if(fromcookie){
+      //   userC = JSON.parse(fromcookie);
+      //   console.log("userC");
+      //   console.log(userC);
+      //   setUser(userC);
+      // } else
+      auth.createUserWithEmailAndPassword(email, pass).then(
+      (firebase)=>
+      {
+        console.log("value.user.email");
+        console.log();
+        firebase.user.updateProfile({
+            displayName: username
+        }).then(function() {
+            console.log("username atualizado com sucesso!");
+            signIn(email, pass);
+        }, function(error) {
+            console.log("Erro ao atulizar username!\nErro:"+error);
         });
-        const ref = db.collection("users").doc(authUser.uid);
-        ref.get().then(doc => {
-          const data = doc.data();
-          if (data) {
-            if (data.timestamp) {
-              //console.log("updating user")
-              return ref.set({
-                name: authUser.displayName,
-                photoURL: authUser.photoURL,
-              }, { merge: true })
-            }
-          }
-          //console.log("setting user")
-          return ref.set({
-            name: authUser.displayName,
-            photoURL: authUser.photoURL,
-            timestamp: createTimestamp(),
-          }, { merge: true })
-        });
-      } else {
-        dispatch({ type: actionTypes.SET_USER, user: null });
-        //console.log(user);
-        setLoader(false);
-        db.collection("version").doc("version").get().then(doc => {
-          // console.log("doc.data()");
-          // console.log(doc.data());
-          const version = doc.data()?doc.data().version:"";
-          const previousVersion = localStorage.getItem("version");
-          if (previousVersion) {
-            //console.log("previous version exists in local storage")
-            if (version !== +previousVersion) {
-              //console.log("new version is not equal to previous version")
-              localStorage.setItem("version", version);
-              setCheckingVerison(false)
-            } else {
-              setCheckingVerison(false)
-            }
-          } else {
-            //console.log("previous version doesn't exists in local storage")
-            localStorage.setItem("version", version);
-            setCheckingVerison(false)
-          }
-        })
-      }
-    })
-  }, [])
-
-  useEffect(() => {
-    window.addEventListener('beforeinstallprompt', (e) => {
-      // Prevent the mini-infobar from appearing on mobile
-      //console.log("pwa event executed");
-      e.preventDefault();
-      // Stash the event so it can be triggered later.
-      setPwaEvent(e);
-      // Update UI notify the user they can install the PWA
+        console.log("usuario criado com sucesso!");
+      },
+      (reason) => {
+          console.log("Erro ao criar usuario usuario! /nErro:"+reason);
+          signIn(email, pass);
+      });
+    }
+  });
+  const signIn = function (email, pass){
+    auth.signInWithEmailAndPassword(email, pass).then(firebase =>{
+      setUser(firebase.user);
+      Cookies.set('User', JSON.stringify(firebase.user), { expires: 7, path: '' });
     });
-    window.addEventListener("resize", () => {
-      dispatch({ type: "set_scale_page", page: scalePage() });
-    })
-  }, []);
+  }
+
+  // useEffect(() => {
+  //   auth.onAuthStateChanged(authUser => {
+  //     //console.log("user change: ", authUser)
+  //     if (authUser) {
+  //       dispatch({ type: actionTypes.SET_USER, user: authUser });
+  //       setLoader(false)
+  //       if ("serviceWorker" in navigator && "PushManager" in window) {
+  //         //console.log("This browser supports notifications and service workers")
+  //         configureNotif(authUser.uid);
+  //       }
+  //       //console.log(authUser);
+  //       db.collection("version").doc("version").get().then(doc => {
+  //         const version = doc.data()?.version;
+  //         const previousVersion = localStorage.getItem("version");
+  //         if (previousVersion) {
+  //           //console.log("previous version exists in local storage")
+  //           if (version !== +previousVersion) {
+  //             //console.log("new version is not equal to previous version")
+  //             localStorage.setItem("version", version);
+  //             setUpdating(true);
+  //             auth.signOut();
+  //             // auth.signInWithRedirect(provider).catch(e => alert(e.message))
+  //           } else {
+  //             setCheckingVerison(false)
+  //           }
+  //         } else {
+  //           //console.log("previous version doesn't exists in local storage")
+  //           localStorage.setItem("version", version);
+  //           setCheckingVerison(false)
+  //         }
+  //       });
+  //       const ref = db.collection("users").doc(authUser.uid);
+  //       ref.get().then(doc => {
+  //         const data = doc.data();
+  //         if (data) {
+  //           if (data.timestamp) {
+  //             //console.log("updating user")
+  //             return ref.set({
+  //               name: authUser.displayName,
+  //               photoURL: authUser.photoURL,
+  //             }, { merge: true })
+  //           }
+  //         }
+  //         //console.log("setting user")
+  //         return ref.set({
+  //           name: authUser.displayName,
+  //           photoURL: authUser.photoURL,
+  //           timestamp: createTimestamp(),
+  //         }, { merge: true })
+  //       });
+  //     } else {
+  //       dispatch({ type: actionTypes.SET_USER, user: null });
+  //       //console.log(user);
+  //       setLoader(false);
+  //       db.collection("version").doc("version").get().then(doc => {
+  //         // console.log("doc.data()");
+  //         // console.log(doc.data());
+  //         const version = doc.data()?doc.data().version:"";
+  //         const previousVersion = localStorage.getItem("version");
+  //         if (previousVersion) {
+  //           //console.log("previous version exists in local storage")
+  //           if (version !== +previousVersion) {
+  //             //console.log("new version is not equal to previous version")
+  //             localStorage.setItem("version", version);
+  //             setCheckingVerison(false)
+  //           } else {
+  //             setCheckingVerison(false)
+  //           }
+  //         } else {
+  //           //console.log("previous version doesn't exists in local storage")
+  //           localStorage.setItem("version", version);
+  //           setCheckingVerison(false)
+  //         }
+  //       })
+  //     }
+  //   })
+  // }, [])
+
+  // useEffect(() => {
+  //   window.addEventListener('beforeinstallprompt', (e) => {
+  //     // Prevent the mini-infobar from appearing on mobile
+  //     //console.log("pwa event executed");
+  //     e.preventDefault();
+  //     // Stash the event so it can be triggered later.
+  //     setPwaEvent(e);
+  //     // Update UI notify the user they can install the PWA
+  //   });
+  //   window.addEventListener("resize", () => {
+  //     dispatch({ type: "set_scale_page", page: scalePage() });
+  //   })
+  // }, []);
 
   useEffect(() => {
     if (user) {
-      db.collection("users").doc(user.uid).collection("chats").orderBy("timestamp", "desc").onSnapshot({ includeMetadataChanges: true }, snap => {
+      db.collection("users").doc(user.uid).collection("chats").orderBy("timestamp", "desc")
+      .onSnapshot({ includeMetadataChanges: true }, snap => {
         if (snap.docs?.length > 0) {
           snap.docChanges().forEach(change => {
             if (change.type === "added") {
               setRoomsData(change.doc.data().userID, change.doc.id);
             };
           });
-          if (!snap.metadata.fromCache || (!window.navigator.onLine && snap.metadata.fromCache)) {
-            setChats(snap.docs.map(cur => ({
+          if (!snap.metadata.fromCache) {
+            const chts = snap.docs.map(cur => ({
               ...cur.data(),
               id: cur.id
-            })));
+            }));
+            let quantUnr = 0
+            chts.forEach(cur =>
+              {
+                quantUnr += cur?.unreadMessages !=null? cur?.unreadMessages : 0; 
+                // quantUnr += chats?.length > 0 ? chats.find(cur => cur.id === pathID)?.unreadMessages : 0
+              });
+            console.log(chats);
+            // quantUnr += chts?.length > 0 ? chts.find(cur => cur.id === pathID)?.unreadMessages : 0;
+            setUnreadMessages(quantUnr);
+            setChats(chts);
           };
         } else {
           setChats([]);
@@ -188,36 +249,44 @@ function App() {
   }, [user]);
 
   useEffect(() => {
+    if (user)
     if (chats?.length > 0) {
       if (chats.every(cur => roomsData[cur.id]?.lastMessage)) {
         setChatsFetched(true);
+        chats.forEach(change => {
+          if (change.type === "added") {
+            setRoomsData(change.doc.data().userID, change.doc.id);
+          };
+        });
       };
     } else if (chats?.length === 0) {
       setChatsFetched(true);
     }
   }, [chats, roomsData]);
 
-  useEffect(() => {
-    var s;
-    if (user) {
-      setOnlineStatus(user.uid);
-    }
-    return () => {
-      if (s) {
-        s();
-      };
-    };
-  }, [user]);
+  // useEffect(() => {
+  //   var s;
+  //   if (user) {
+  //     setOnlineStatus(user.uid);
+  //   }
+  //   return () => {
+  //     if (s) {
+  //       s();
+  //     };
+  //   };
+  // }, [user]);
 
-  useEffect(() => {
-    var id = location.pathname.replace("/room/", "");
-    menus.forEach(cur => id = id.replace(cur, ""))
-    dispatch({ type: "set_path_id", id });
-  }, [location.pathname]);
+  // useEffect(() => {
+  //   var id = location.pathname.replace("/room/", "");
+  //   menus.forEach(cur => id = id.replace(cur, ""))
+  //   dispatch({ type: "set_path_id", id });
+  // }, [location.pathname]);
 
   return (
     <div className="app" style={{ ...page }} >
-      {page.width <= 760 ?
+      {
+        <div id='notfication_counter'>chats:{chats!=null?unreadMessages:0}</div>
+        /* {page.width <= 760 ?
         <Redirect to="/chats" />
         : <Redirect to="/" />}
       {!user && !loader && !checkingVersion && !updating ?
@@ -263,7 +332,7 @@ function App() {
           <div className="loader__container">
             <CircularProgress />
           </div>
-      }
+      } */}
     </div>
   );
 }
