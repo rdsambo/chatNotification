@@ -71,9 +71,6 @@ export default memo(function LeftSide({
                   console.log('unreadCount[0]');
                   console.log(unreadCount[0]);
                   let newChatRooms = chatRooms.map(item => item.id === chatRoom.id ? {...item, unreadCount: unreadCount[0]} : item);
-                  if(unreadCount[0] > 0){
-                    playAudio()
-                  }
                   setChatRooms(newChatRooms);
                 });
                 // setMessages(messages);
@@ -105,11 +102,14 @@ export default memo(function LeftSide({
       //   // playAudio();
       // }
     }
+    if(unreadCount > 0){
+      playAudio()
+    }
   }, [chatRooms])
 
   return (<>
     <audio ref={audioPlayer} src={NotificationSound} />
-    <a className="chat-btn" href="/chat">
+    <a className="chat-btn" href="http://10.30.0.13/chat">
       <i className="fa fa-comment"></i>
       <span id="chat_notification_counter" className="msg-count">0</span>
     </a>
