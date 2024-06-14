@@ -12,7 +12,8 @@ import {
   where,
 } from "firebase/firestore";
 import { chatRoom } from "../core/types";
-import "reactjs-popup/dist/index.css";
+import "./index.css";
+
 type Props = {
   picture?: string;
   userId?: string;
@@ -108,7 +109,10 @@ export default memo(function LeftSide({
 
   return (<>
     <audio ref={audioPlayer} src={NotificationSound} />
-    <>some thing is happen</>
+    <a className="chat-btn" href="/chat">
+      <i className="fa fa-comment"></i>
+      <span id="chat_notification_counter" className="msg-count">0</span>
+    </a>
   </>
   );
 });

@@ -1,0 +1,38 @@
+.chat-btn {
+    position: relative;
+    top:10px;
+    /* bottom: 20px;
+    right: 20px; */
+    width: 60px;
+    height: 60px;
+    background-color: #128C7E;
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 24px;
+    cursor: pointer;
+    box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2);
+    text-decoration: none;
+    z-index: 100000;
+}
+.chat-btn:hover {
+    text-decoration: none;
+    color: white;
+}
+.chat-btn .msg-count {
+    position: absolute;
+    top: -10px;
+    right: -10px;
+    background-color: red;
+    color: white;
+    border-radius: 50%;
+    width: 25px;
+    height: 25px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 12px;
+}
+@import url(https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css)
